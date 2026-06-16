@@ -1,33 +1,41 @@
 import streamlit as st
 import pickle
 import numpy as np
+import pandas as pd
 
 st.set_page_config(page_title="Loan Default Predictor", layout="wide")
 
 st.title("🏦 Alpha Dreamers Banking Consortium")
 st.subheader("Personal Loan Default Risk Assessment")
 
-st.info("📁 Please upload your loan_model.pkl file to get started")
-
-# Let user upload the model file
-uploaded_model = st.file_uploader("Choose loan_model.pkl file", type=["pkl"])
+# Let user upload the model
+uploaded_model = st.file_uploader("Upload your loan_model.pkl file", type=["pkl"])
 
 if uploaded_model is not None:
     try:
-        # Load the model from the uploaded file
         model = pickle.load(uploaded_model)
         st.success("✅ Model loaded successfully!")
         
-        # Sidebar inputs
-        st.sidebar.header("Customer Information")
-        age = st.sidebar.slider("Age", 18, 80, 35)
-        income = st.sidebar.number_input("Annual Income ($)", 0, 500000, 50000)
-        loan_amount = st.sidebar.number_input("Loan Amount ($)", 0, 200000, 20000)
-        credit_score = st.sidebar.slider("Credit Score", 300, 850, 680)
+        # Show how many features the model expects
+        n_features = model.n_features_in_
+        st.info(f"📊 This model requires {n_features} customer details")
+        
+        st.sidebar.header("Enter All Customer Details")
+        
+        # Create 15 input fields (all numbers for simplicity)
+        input_values = []
+        for i in range(n_features):
+            val = st.sidebar.number_input(
+                f"Feature {i+1}", 
+                value=0.0,
+                step=1.0,
+                key=f"feature_{i}"
+            )
+            input_values.append(val)
         
         if st.sidebar.button("Predict Default Risk"):
-            # Create feature array
-            features = np.array([[age, income, loan_amount, credit_score]])
+            # Convert to numpy array
+            features = np.array([input_values])
             
             try:
                 prediction = model.predict(features)
@@ -45,8 +53,10 @@ if uploaded_model is not None:
                 
                 with col2:
                     st.metric("Default Probability", f"{probability:.1%}")
+                    
+                    # Risk level indicator
                     if probability < 0.3:
-                        st.info("🟢 Low Risk")
+                        st.success("🟢 Low Risk")
                     elif probability < 0.6:
                         st.warning("🟡 Medium Risk")
                     else:
@@ -54,20 +64,19 @@ if uploaded_model is not None:
                         
             except Exception as e:
                 st.error(f"Prediction error: {str(e)}")
-                st.info("Make sure the input features match your model's training data")
+                st.info(f"Make sure you entered exactly {n_features} values")
                 
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
-        st.info("Please make sure you're uploading a valid .pkl file")
+        st.info("Please upload a valid .pkl model file")
 
 else:
-    st.info("👆 Upload your loan_model.pkl file above to start predicting")
+    st.info("📁 Upload your loan_model.pkl file to get started")
     
-    # Show file info
     st.markdown("""
-    ### How to use this app:
-    1. Upload your `loan_model.pkl` file
-    2. Enter customer details in the sidebar
+    ### How to use:
+    1. Upload your `loan_model.pkl` file above
+    2. Enter all customer details in the sidebar
     3. Click 'Predict Default Risk'
-    4. View the results
+    4. View the prediction results
     """)
