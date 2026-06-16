@@ -1,14 +1,12 @@
 import streamlit as st
 import pickle
 import numpy as np
-import pandas as pd
 
 st.set_page_config(page_title="Loan Default Predictor", layout="wide")
 
 st.title("🏦 Alpha Dreamers Banking Consortium")
 st.subheader("Personal Loan Default Risk Assessment")
 
-# Let user upload the model
 uploaded_model = st.file_uploader("Upload your loan_model.pkl file", type=["pkl"])
 
 if uploaded_model is not None:
@@ -16,67 +14,40 @@ if uploaded_model is not None:
         model = pickle.load(uploaded_model)
         st.success("✅ Model loaded successfully!")
         
-        # Show how many features the model expects
-        n_features = model.n_features_in_
-        st.info(f"📊 This model requires {n_features} customer details")
+        st.sidebar.header("Enter Customer Details")
         
-        st.sidebar.header("Enter All Customer Details")
+        # === REPLACE THESE WITH YOUR ACTUAL COLUMN NAMES ===
+        # Get from the code above
+        age = st.sidebar.slider("Age", 18, 80, 35)
+        income = st.sidebar.number_input("Annual Income", 0, 500000, 50000)
+        loan_amount = st.sidebar.number_input("Loan Amount", 0, 200000, 20000)
+        credit_score = st.sidebar.slider("Credit Score", 300, 850, 680)
+        employment_years = st.sidebar.slider("Years Employed", 0, 40, 5)
+        # ... add 10 more features here
+        # Total must be 15
         
-        # Create 15 input fields (all numbers for simplicity)
-        input_values = []
-        for i in range(n_features):
-            val = st.sidebar.number_input(
-                f"Feature {i+1}", 
-                value=0.0,
-                step=1.0,
-                key=f"feature_{i}"
-            )
-            input_values.append(val)
+        # Create array with ALL features in the correct order
+        features = np.array([[
+            age,
+            income,
+            loan_amount,
+            credit_score,
+            employment_years,
+            # ... add all other values in the same order as your CSV
+        ]])
         
         if st.sidebar.button("Predict Default Risk"):
-            # Convert to numpy array
-            features = np.array([input_values])
+            prediction = model.predict(features)
+            probability = model.predict_proba(features)[0][1]
             
-            try:
-                prediction = model.predict(features)
-                probability = model.predict_proba(features)[0][1]
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    if prediction[0] == 1:
-                        st.error("⚠️ HIGH RISK: Customer likely to default")
-                        st.metric("Decision", "REJECT LOAN")
-                    else:
-                        st.success("✅ LOW RISK: Customer likely to repay")
-                        st.metric("Decision", "APPROVE LOAN")
-                
-                with col2:
-                    st.metric("Default Probability", f"{probability:.1%}")
-                    
-                    # Risk level indicator
-                    if probability < 0.3:
-                        st.success("🟢 Low Risk")
-                    elif probability < 0.6:
-                        st.warning("🟡 Medium Risk")
-                    else:
-                        st.error("🔴 High Risk")
-                        
-            except Exception as e:
-                st.error(f"Prediction error: {str(e)}")
-                st.info(f"Make sure you entered exactly {n_features} values")
+            col1, col2 = st.columns(2)
+            with col1:
+                if prediction[0] == 1:
+                    st.error("⚠️ HIGH RISK")
+                else:
+                    st.success("✅ LOW RISK")
+            with col2:
+                st.metric("Default Probability", f"{probability:.1%}")
                 
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
-        st.info("Please upload a valid .pkl model file")
-
-else:
-    st.info("📁 Upload your loan_model.pkl file to get started")
-    
-    st.markdown("""
-    ### How to use:
-    1. Upload your `loan_model.pkl` file above
-    2. Enter all customer details in the sidebar
-    3. Click 'Predict Default Risk'
-    4. View the prediction results
-    """)
+        st.error(f"Error: {str(e)}")
